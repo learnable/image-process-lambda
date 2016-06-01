@@ -1,0 +1,22 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "CreateThumbnail.js",
+  "dependencies": {
+    "async": "^2.0.0-rc.5",
+    "gm": "^1.22.0",
+    "imagemin": "^5.2.0",
+    "imagemin-jpegtran": "^5.0.2",
+    "imagemin-mozjpeg": "^6.0.0",
+    "imagemin-optipng": "^5.1.0",
+    "imagemin-pngcrush": "^5.0.0",
+    "selectn": "^1.0.20"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
