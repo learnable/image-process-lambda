@@ -1,6 +1,5 @@
 const async = require("async");
 const AWS = require("aws-sdk");
-const selectn = require("selectn");
 
 const parseS3Event = require("./lib/parseS3Event");
 const s3Dest = require("./lib/s3Dest");
@@ -8,10 +7,10 @@ const s3Src = require("./lib/s3Src");
 
 const size = require("./lib/size");
 const keyForSize = size.keyForSize;
-const resizeTo = size.resizeTo;
+// const resizeTo = size.resizeTo;
 const optimize = require("./lib/optimize");
 
-const LAMBDA_VERSION = "0.0.1"; // TODO move version to SP_image_process.json
+const LAMBDA_VERSION = "0.0.2"; // TODO move version to SP_image_process.json
 
 // get reference to S3 client 
 const s3 = new AWS.S3({apiVersion: "2006-03-01"});
@@ -40,29 +39,22 @@ exports.handler = (event, context, callback) => {
           }
           console.log("Got object", srcData);
           
-          if (config.options.skipSize !== -1 && srcData.ContentLength > config.options.skipSize) {
+          if (config.shouldSkipSize(srcData.ContentLength)) {
             console.log("Skipping due to size");
             return destS3.copy(next);
           }
 
-          if (config.options.processAtOriginalSize) config.options.sizes.push(null);
-
-          const tasks = config.options.sizes.map((size) => {
+          const tasks = config.sizes.map((size) => {
             const destKey = keyForSize(s3Event.key, size);
 
             return (cb) => {
-              destS3.head(destKey, function(err, destData) {
-                //swallow error as file may not already be at dest
-                if (!err) console.log("Got dest data:", destData);
-
-                if (selectn("Metadata.sp_image_processed", destData) === LAMBDA_VERSION) {
-                  console.log("processed image already at dest", destKey)
-                  return cb();
-                }
+              destS3.isAlreadyProcessed(destKey, srcData.ETag, function(err, hasAlreadyProcessed) {
+                if (hasAlreadyProcessed) return cb();
 
                 async.waterfall([
-                  resizeTo(srcData.Body, size, s3Event.fileType),
-                  optimize,
+                  // resizeTo(srcData.Body, size, s3Event.fileType),
+                  // optimize,
+                  (cb) => optimize(srcData.Body, cb),
                   destS3.putWithMeta(srcData, destKey)
                 ], cb);
               });
@@ -72,7 +64,7 @@ exports.handler = (event, context, callback) => {
 
           return async.parallel(tasks, next);
         });
-      } else if (config.options.copyUnprocessedFiles) {
+      } else if (config.shouldCopyUnprocessedFiles) {
         console.log("Copy unprocessed file");
         return destS3.copy(next);
       } else {
